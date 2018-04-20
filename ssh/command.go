@@ -5,10 +5,8 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	// "fmt"
 	"io"
 	"io/ioutil"
-	"net"
 	"strings"
 	"time"
 
@@ -77,7 +75,7 @@ func (s *Client) Connect() error {
 	config := &ssh.ClientConfig{
 		User:            s.User,
 		Auth:            methods,
-		HostKeyCallback: hostKeyCallback,
+		HostKeyCallback: ssh.InsecureIgnoreHostKey(),
 	}
 
 	connectRetries := s.ConnectRetries
@@ -181,8 +179,4 @@ func (s *Client) Cleanup() {
 	if s.client != nil {
 		s.client.Close()
 	}
-}
-
-func hostKeyCallback(hostname string, remote net.Addr, key ssh.PublicKey) error {
-	return nil
 }
