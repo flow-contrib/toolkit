@@ -6,7 +6,7 @@ Toolkit
 
 `flow.conf`
 
-```ssh
+```hocon
 packages = ["github.com/flow-contrib/toolkit/ssh"]
 
 app {
@@ -42,10 +42,86 @@ app {
 
 ```bash
 $ go-flow run --config flow.conf run
-```
 
-```
 PING example.com (93.184.216.34): 56 data bytes
 64 bytes from 93.184.216.34: icmp_seq=0 ttl=46 time=162.728 ms
 ......
+```
+
+## Pwdgen
+
+`flow.conf`
+
+```hocon
+packages = ["github.com/flow-contrib/toolkit/pwgen"]
+
+app {
+    name = "pwgen"
+    usage = "This is a demo for generate password"
+
+    commands {
+        generate {
+            usage = "generate password"
+
+            default-config = { 
+
+                 gitlab {
+                    name = "GITLAB-PASSWORD" 
+                    # name to append output, if is empty, will use config key 'gitlab' as name
+                    len = 16
+                    symbols = true
+                 }
+
+                 mysql-prod {
+                    len = 16
+                    
+                    # encoding could be: md5, sha256, sha512, base64
+                    encoding = md5 
+                    
+                    # it will set env to MYSQL_PROD_PASSWORD_PLAIN and MYSQL_PROD_PASSWORD_ENCODED
+                    env = "MYSQL_PROD_PASSWORD" 
+                 }
+            }
+
+            flow = ["toolkit.pwgen.generate"]
+        }
+    }
+}
+```
+
+```bash
+$ go-flow -v run --config flow.conf generate
+```
+
+**output**
+
+```json
+{
+    "output": [
+        {
+            "name": "GITLAB-PASSWORD",
+            "value": {
+                "name": "GITLAB-PASSWORD",
+                "length": 16,
+                "encoding": "plain",
+                "plain": "uZIP1}*T^vbhY_Nz",
+                "value": "uZIP1}*T^vbhY_Nz",
+                "symbols": true,
+                "env": ""
+            }
+        },
+        {
+            "name": "mysql-prod",
+            "value": {
+                "name": "mysql-prod",
+                "length": 16,
+                "encoding": "md5",
+                "plain": "uAxK70hqMvR6vvXb",
+                "value": "1965c122cc388357ab76822cad593a32",
+                "symbols": false,
+                "env": "MYSQL_PROD_PASSWORD"
+            }
+        }
+    ]
+}
 ```
