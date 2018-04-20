@@ -11,7 +11,7 @@ import (
 )
 
 func init() {
-	flow.RegisterHandler("tookit.ssh.run", Run)
+	flow.RegisterHandler("toolkit.ssh.run", Run)
 }
 
 func Run(ctx context.Context, conf config.Configuration) (err error) {
