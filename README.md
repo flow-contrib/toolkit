@@ -15,7 +15,7 @@ app {
 
     commands {
         run {
-            usage = "This command will print hello"
+            usage = "Run command on remote ssh server"
 
             default-config = { 
             
@@ -26,12 +26,14 @@ app {
 
                 environment = ["GOPATH=/gopath"]
                 command     = ["/bin/bash"]
-                timeout     = 100s
+                timeout     = 10s
 
                 stdin ="""
-                ping -c 10 example.com
+                ping -c 1 example.com
                 echo $GOPATH
                 """
+
+                output.name = "ping-example" # set output name
             }
 
             flow = ["toolkit.ssh.run"]
@@ -42,10 +44,31 @@ app {
 
 ```bash
 $ go-flow run --config flow.conf run
+```
 
-PING example.com (93.184.216.34): 56 data bytes
-64 bytes from 93.184.216.34: icmp_seq=0 ttl=46 time=162.728 ms
-......
+**output**
+
+```json
+[
+    {
+        "name": "ping-example",
+        "value": {
+            "host": "localhost",
+            "port": "22",
+            "user": "user",
+            "command": {
+                "environment": [
+                    "GOPATH=/gopath"
+                ],
+                "command": [
+                    "/bin/bash"
+                ],
+                "stdin": "ping -c 1 example.com\n                echo $GOPATH"
+            },
+            "output": "PING example.com (93.184.216.34): 56 data bytes\n64 bytes from 93.184.216.34: icmp_seq=0 ttl=46 time=264.645 ms\n--- example.com ping statistics ---\n1 packets transmitted, 1 packets received, 0% packet loss\nround-trip min/avg/max/stddev = 264.645/264.645/264.645/0.000 ms\n"
+        }
+    }
+]
 ```
 
 ## Pwgen
@@ -99,32 +122,44 @@ $ go-flow -v run --config flow.conf generate
 **output**
 
 ```json
-{
-    "output": [
-        {
-            "name": "GITLAB-PASSWORD",
-            "value": {
-                "name": "GITLAB-PASSWORD",
-                "length": 16,
-                "encoding": "plain",
-                "plain": "uZIP1}*T^vbhY_Nz",
-                "value": "uZIP1}*T^vbhY_Nz",
-                "symbols": true,
-                "env": ""
-            }
+[
+    {
+        "name": "GITLAB_PASSWORD",
+        "value": {
+            "name": "GITLAB_PASSWORD",
+            "length": 16,
+            "encoding": "plain",
+            "plain": "N!c,Hqub7KXB1S(R",
+            "encoded": "N!c,Hqub7KXB1S(R",
+            "symbols": true,
+            "environment": [
+                "GITLAB_PASSWORD_PLAIN",
+                "GITLAB_PASSWORD_ENCODED"
+            ]
         },
-        {
+        "tags": [
+            "toolkit",
+            "pwgen"
+        ]
+    },
+    {
+        "name": "mysql-prod",
+        "value": {
             "name": "mysql-prod",
-            "value": {
-                "name": "mysql-prod",
-                "length": 16,
-                "encoding": "md5",
-                "plain": "uAxK70hqMvR6vvXb",
-                "value": "1965c122cc388357ab76822cad593a32",
-                "symbols": false,
-                "env": "MYSQL_PROD_PASSWORD"
-            }
-        }
-    ]
-}
+            "length": 16,
+            "encoding": "md5",
+            "plain": "2MbupEycLjUkpOyt",
+            "encoded": "2eafad5fd0808c78956901de39cfbe74",
+            "symbols": false,
+            "environment": [
+                "MYSQL_PROD_PLAIN",
+                "MYSQL_PROD_ENCODED"
+            ]
+        },
+        "tags": [
+            "toolkit",
+            "pwgen"
+        ]
+    }
+]
 ```

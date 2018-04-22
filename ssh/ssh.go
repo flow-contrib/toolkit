@@ -39,7 +39,7 @@ func Run(ctx context.Context, conf config.Configuration) (err error) {
 	timeout := conf.GetTimeDuration("timeout", 0)
 
 	command := conf.GetStringList("command")
-	envs := conf.GetStringList("envs")
+	envs := conf.GetStringList("environment")
 	stdin := conf.GetString("stdin")
 
 	if len(command) == 0 {
