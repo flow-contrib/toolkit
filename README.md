@@ -33,6 +33,7 @@ app {
                 echo $GOPATH
                 """
 
+                quiet = false
                 output.name = "ping-example" # set output name
             }
 
@@ -44,6 +45,13 @@ app {
 
 ```bash
 $ go-flow run --config flow.conf run
+
+PING example.com (93.184.216.34): 56 data bytes
+64 bytes from 93.184.216.34: icmp_seq=0 ttl=46 time=267.681 ms
+--- example.com ping statistics ---
+1 packets transmitted, 1 packets received, 0% packet loss
+round-trip min/avg/max/stddev = 267.681/267.681/267.681/0.000 ms
+/gopath
 ```
 
 **output**
@@ -53,9 +61,9 @@ $ go-flow run --config flow.conf run
     {
         "name": "ping-example",
         "value": {
-            "host": "localhost",
-            "port": "22",
-            "user": "user",
+            "host": "rijin-services-agent",
+            "port": "20022",
+            "user": "work",
             "command": {
                 "environment": [
                     "GOPATH=/gopath"
@@ -65,7 +73,7 @@ $ go-flow run --config flow.conf run
                 ],
                 "stdin": "ping -c 1 example.com\n                echo $GOPATH"
             },
-            "output": "PING example.com (93.184.216.34): 56 data bytes\n64 bytes from 93.184.216.34: icmp_seq=0 ttl=46 time=264.645 ms\n--- example.com ping statistics ---\n1 packets transmitted, 1 packets received, 0% packet loss\nround-trip min/avg/max/stddev = 264.645/264.645/264.645/0.000 ms\n"
+            "output": "PING example.com (93.184.216.34): 56 data bytes\n64 bytes from 93.184.216.34: icmp_seq=0 ttl=46 time=267.681 ms\n--- example.com ping statistics ---\n1 packets transmitted, 1 packets received, 0% packet loss\nround-trip min/avg/max/stddev = 267.681/267.681/267.681/0.000 ms\n/gopath"
         }
     }
 ]

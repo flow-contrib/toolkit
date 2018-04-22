@@ -7,6 +7,8 @@ import (
 	"github.com/gogap/config"
 	"github.com/gogap/context"
 	"github.com/gogap/flow"
+	"io"
+	"os"
 	"strings"
 )
 
@@ -42,6 +44,8 @@ func Run(ctx context.Context, conf config.Configuration) (err error) {
 	envs := conf.GetStringList("environment")
 	stdin := conf.GetString("stdin")
 
+	quiet := conf.GetBoolean("quiet")
+
 	if len(command) == 0 {
 		fmt.Errorf("config of command could not be empty, e.g.: command = [\"/bin/bash\"]")
 		return
@@ -49,6 +53,16 @@ func Run(ctx context.Context, conf config.Configuration) (err error) {
 
 	errWriter := bytes.NewBuffer(nil)
 	outWriter := bytes.NewBuffer(nil)
+
+	var stdErr, stdOut io.Writer
+
+	if quiet {
+		stdErr = errWriter
+		stdOut = outWriter
+	} else {
+		stdErr = io.MultiWriter(errWriter, os.Stderr)
+		stdOut = io.MultiWriter(outWriter, os.Stdout)
+	}
 
 	cli := Client{
 		Config: Config{
@@ -60,8 +74,8 @@ func Run(ctx context.Context, conf config.Configuration) (err error) {
 			ConnectRetries: int(connectRetries),
 		},
 
-		Stderr: errWriter,
-		Stdout: outWriter,
+		Stderr: stdErr,
+		Stdout: stdOut,
 	}
 
 	err = cli.Connect()
