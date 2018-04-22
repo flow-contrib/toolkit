@@ -48,7 +48,7 @@ PING example.com (93.184.216.34): 56 data bytes
 ......
 ```
 
-## Pwdgen
+## Pwgen
 
 `flow.conf`
 
@@ -66,20 +66,23 @@ app {
             default-config = { 
 
                  gitlab {
-                    name = "GITLAB-PASSWORD" 
+
                     # name to append output, if is empty, will use config key 'gitlab' as name
+                    name = "GITLAB_PASSWORD"
+
                     len = 16
                     symbols = true
+                    env = true # it will set env to GITLAB_PASSWORD_PLAIN and GITLAB_PASSWORD_ENCODED
                  }
 
                  mysql-prod {
                     len = 16
-                    
-                    # encoding could be: md5, sha256, sha512, base64
-                    encoding = md5 
-                    
-                    # it will set env to MYSQL_PROD_PASSWORD_PLAIN and MYSQL_PROD_PASSWORD_ENCODED
-                    env = "MYSQL_PROD_PASSWORD" 
+
+                    # encoding could be: sha256, sha512, base64
+                    encoding = md5
+
+                    # it will set env to MYSQL_PROD_PLAIN and MYSQL_PROD_ENCODED
+                    env = true
                  }
             }
 
