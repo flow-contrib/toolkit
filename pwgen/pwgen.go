@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/chr4/pwgen"
 	"github.com/gogap/config"
@@ -15,13 +16,14 @@ import (
 )
 
 type Password struct {
-	Name       string `json:"name"`
-	Length     int    `json:"length"`
-	Encoding   string `json:"encoding"`
-	Plain      string `json:"plain"`
-	Encoded    string `json:"value"`
-	HasSymbols bool   `json:"symbols"`
-	Env        string `json:"env"`
+	Name        string   `json:"name"`
+	Length      int      `json:"length"`
+	Encoding    string   `json:"encoding"`
+	Plain       string   `json:"plain"`
+	Encoded     string   `json:"encoded"`
+	HasSymbols  bool     `json:"symbols"`
+	Environment []string `json:"environment"`
+	envPrefix   string
 }
 
 func (p *Password) Generate() (err error) {
@@ -108,14 +110,18 @@ func Generate(ctx context.Context, conf config.Configuration) (err error) {
 		pwdlen := pwdConf.GetInt32("len", 16)
 		encoding := pwdConf.GetString("encoding", "")
 		symbols := pwdConf.GetBoolean("symbols", false)
-		env := pwdConf.GetString("env")
+		env := pwdConf.GetBoolean("env")
 
 		pwd := Password{
-			Env:        env,
 			Name:       outputName,
 			Length:     int(pwdlen),
 			Encoding:   encoding,
 			HasSymbols: symbols,
+		}
+
+		if env {
+			pwd.envPrefix = toEnvFomart(outputName)
+			pwd.Environment = append(pwd.Environment, pwd.envPrefix+"_PLAIN", pwd.envPrefix+"_ENCODED")
 		}
 
 		err = pwd.Generate()
@@ -129,11 +135,17 @@ func Generate(ctx context.Context, conf config.Configuration) (err error) {
 	for i := 0; i < len(pwds); i++ {
 		flow.AppendOutput(ctx, flow.NameValue{Name: pwds[i].Name, Value: pwds[i], Tags: []string{"toolkit", "pwgen"}})
 
-		if len(pwds[i].Env) > 0 {
-			os.Setenv(pwds[i].Env+"_PLAIN", pwds[i].Plain)
-			os.Setenv(pwds[i].Env+"_ENCODED", pwds[i].Encoded)
+		if len(pwds[i].envPrefix) > 0 {
+			os.Setenv(pwds[i].envPrefix+"_PLAIN", pwds[i].Plain)
+			os.Setenv(pwds[i].envPrefix+"_ENCODED", pwds[i].Encoded)
 		}
 	}
 
 	return
+}
+
+func toEnvFomart(key string) string {
+	key = strings.ToUpper(key)
+	key = strings.Replace(key, "-", "_", -1)
+	return key
 }
