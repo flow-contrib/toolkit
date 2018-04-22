@@ -127,7 +127,7 @@ func Generate(ctx context.Context, conf config.Configuration) (err error) {
 	}
 
 	for i := 0; i < len(pwds); i++ {
-		flow.AppendOutput(ctx, pwds[i].Name, pwds[i])
+		flow.AppendOutput(ctx, flow.NameValue{Name: pwds[i].Name, Value: pwds[i], Tags: []string{"toolkit", "pwgen"}})
 
 		if len(pwds[i].Env) > 0 {
 			os.Setenv(pwds[i].Env+"_PLAIN", pwds[i].Plain)
