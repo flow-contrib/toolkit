@@ -25,9 +25,9 @@ type Client struct {
 }
 
 type Command struct {
-	Environment []string
-	Command     []string
-	Stdin       string
+	Environment []string `json:"environment"`
+	Command     []string `json:"command"`
+	Stdin       string   `json:"stdin"`
 }
 
 type ExitError struct {

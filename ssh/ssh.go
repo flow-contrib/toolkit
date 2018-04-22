@@ -1,14 +1,24 @@
 package ssh
 
 import (
-	"fmt"
-	"os"
-	// "fmt"
+	"bytes"
 	goctx "context"
+	"fmt"
 	"github.com/gogap/config"
 	"github.com/gogap/context"
 	"github.com/gogap/flow"
+	"strings"
 )
+
+type OutputValue struct {
+	Host string `json:"host"`
+	Port string `json:"port"`
+	User string `json:"user"`
+
+	Command Command `json:"command"`
+
+	Output string `json:"output"`
+}
 
 func init() {
 	flow.RegisterHandler("toolkit.ssh.run", Run)
@@ -37,6 +47,9 @@ func Run(ctx context.Context, conf config.Configuration) (err error) {
 		return
 	}
 
+	errWriter := bytes.NewBuffer(nil)
+	outWriter := bytes.NewBuffer(nil)
+
 	cli := Client{
 		Config: Config{
 			User:           user,
@@ -47,8 +60,8 @@ func Run(ctx context.Context, conf config.Configuration) (err error) {
 			ConnectRetries: int(connectRetries),
 		},
 
-		Stderr: os.Stdin,
-		Stdout: os.Stdout,
+		Stderr: errWriter,
+		Stdout: outWriter,
 	}
 
 	err = cli.Connect()
@@ -74,6 +87,27 @@ func Run(ctx context.Context, conf config.Configuration) (err error) {
 	}
 
 	err = cli.Run(c, cmd)
+
+	if err != nil {
+		return
+	}
+
+	if errWriter.Len() > 0 {
+		err = fmt.Errorf("execute ssh command on server %s@%s:%s error: %s", user, host, port, strings.TrimSuffix(errWriter.String(), "\n"))
+		return
+	}
+
+	outputName := conf.GetString("output.name")
+
+	flow.AppendOutput(ctx, flow.NameValue{
+		Name: outputName,
+		Value: OutputValue{
+			Host:    host,
+			User:    user,
+			Port:    port,
+			Command: cmd,
+			Output:  strings.TrimSuffix(outWriter.String(), "\n"),
+		}})
 
 	return
 }
