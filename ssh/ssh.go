@@ -3,13 +3,15 @@ package ssh
 import (
 	"bytes"
 	goctx "context"
+	"encoding/json"
 	"fmt"
-	"github.com/gogap/config"
-	"github.com/gogap/context"
-	"github.com/gogap/flow"
 	"io"
 	"os"
 	"strings"
+
+	"github.com/gogap/config"
+	"github.com/gogap/context"
+	"github.com/gogap/flow"
 )
 
 type OutputValue struct {
@@ -113,15 +115,22 @@ func Run(ctx context.Context, conf config.Configuration) (err error) {
 
 	outputName := conf.GetString("output.name")
 
+	outputData, err := json.Marshal(OutputValue{
+		Host:    host,
+		User:    user,
+		Port:    port,
+		Command: cmd,
+		Output:  strings.TrimSuffix(outWriter.String(), "\n"),
+	})
+
+	if err != nil {
+		return
+	}
+
 	flow.AppendOutput(ctx, flow.NameValue{
-		Name: outputName,
-		Value: OutputValue{
-			Host:    host,
-			User:    user,
-			Port:    port,
-			Command: cmd,
-			Output:  strings.TrimSuffix(outWriter.String(), "\n"),
-		}})
+		Name:  outputName,
+		Value: outputData,
+	})
 
 	return
 }
