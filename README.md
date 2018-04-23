@@ -124,8 +124,13 @@ app {
 ```
 
 ```bash
-$ go-flow -v run --config flow.conf generate
+$ go-flow -v run --config flow.conf generate -o pwd-output.json
+
+# Idempotent, if input the output's data before, 
+# it will generate the same password, and will export to environment again
+# go-flow -v run --config flow.conf generate -input pwd-output.json
 ```
+
 
 **output**
 
