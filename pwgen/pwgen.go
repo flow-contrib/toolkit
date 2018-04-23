@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"crypto/sha512"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -13,6 +14,10 @@ import (
 	"github.com/gogap/config"
 	"github.com/gogap/context"
 	"github.com/gogap/flow"
+)
+
+var (
+	Tags = []string{"toolkit", "pwgen"}
 )
 
 type Password struct {
@@ -24,6 +29,8 @@ type Password struct {
 	HasSymbols  bool     `json:"symbols"`
 	Environment []string `json:"environment"`
 	envPrefix   string
+	exportToEnv bool
+	output      bool
 }
 
 func (p *Password) Generate() (err error) {
@@ -80,6 +87,28 @@ func (p *Password) Generate() (err error) {
 	return
 }
 
+func (p *Password) ExportToEnv() {
+	if p.exportToEnv {
+		os.Setenv(p.envPrefix+"_PLAIN", p.Plain)
+		os.Setenv(p.envPrefix+"_ENCODED", p.Encoded)
+	}
+}
+
+func (p Password) AppendOutput(ctx context.Context) (err error) {
+	if !p.output {
+		return
+	}
+
+	data, err := json.Marshal(p)
+	if err != nil {
+		return
+	}
+
+	flow.AppendOutput(ctx, flow.NameValue{Name: p.Name, Value: data, Tags: Tags})
+
+	return
+}
+
 func init() {
 	flow.RegisterHandler("toolkit.pwgen.generate", Generate)
 }
@@ -107,38 +136,67 @@ func Generate(ctx context.Context, conf config.Configuration) (err error) {
 		}
 
 		outputName := pwdConf.GetString("name", name)
-		pwdlen := pwdConf.GetInt32("len", 16)
-		encoding := pwdConf.GetString("encoding", "")
-		symbols := pwdConf.GetBoolean("symbols", false)
-		env := pwdConf.GetBoolean("env")
 
-		pwd := Password{
-			Name:       outputName,
-			Length:     int(pwdlen),
-			Encoding:   encoding,
-			HasSymbols: symbols,
+		originalOutputs := flow.FindOutput(ctx, outputName, Tags...)
+
+		if len(originalOutputs) == 0 {
+
+			pwdlen := pwdConf.GetInt32("len", 16)
+			encoding := pwdConf.GetString("encoding", "")
+			symbols := pwdConf.GetBoolean("symbols", false)
+			env := pwdConf.GetBoolean("env")
+
+			pwd := Password{
+				Name:        outputName,
+				Length:      int(pwdlen),
+				Encoding:    encoding,
+				HasSymbols:  symbols,
+				exportToEnv: env,
+				output:      true,
+			}
+
+			if env {
+				envPrefix := toEnvFomart(outputName)
+				pwd.envPrefix = envPrefix
+				pwd.Environment = []string{envPrefix + "_PLAIN", envPrefix + "_ENCODED"}
+			}
+
+			err = pwd.Generate()
+			if err != nil {
+				return
+			}
+
+			pwds = append(pwds, pwd)
+
+		} else if len(originalOutputs) > 1 {
+			err = fmt.Errorf("conflict of output name: %s, tags: %s", outputName, strings.Join(Tags, ","))
+			return
+		} else {
+
+			var pwd Password
+			errUnmarshal := json.Unmarshal(originalOutputs[0].Value, &pwd)
+			if errUnmarshal != nil {
+				err = fmt.Errorf("convert output name: %s, tags: %s to password failure: %s", outputName, strings.Join(Tags, ","), errUnmarshal)
+				return
+			}
+
+			if len(pwd.Name) == 0 {
+				err = fmt.Errorf("convert output name: %s, tags: %s to password failure: it was empty content", outputName, strings.Join(Tags, ","))
+				return
+			}
+
+			pwd.output = false
+			pwds = append(pwds, pwd)
 		}
+	}
 
-		if env {
-			pwd.envPrefix = toEnvFomart(outputName)
-			pwd.Environment = append(pwd.Environment, pwd.envPrefix+"_PLAIN", pwd.envPrefix+"_ENCODED")
-		}
-
-		err = pwd.Generate()
+	for i := 0; i < len(pwds); i++ {
+		err = pwds[i].AppendOutput(ctx)
 		if err != nil {
 			return
 		}
 
-		pwds = append(pwds, pwd)
-	}
-
-	for i := 0; i < len(pwds); i++ {
-		flow.AppendOutput(ctx, flow.NameValue{Name: pwds[i].Name, Value: pwds[i], Tags: []string{"toolkit", "pwgen"}})
-
-		if len(pwds[i].envPrefix) > 0 {
-			os.Setenv(pwds[i].envPrefix+"_PLAIN", pwds[i].Plain)
-			os.Setenv(pwds[i].envPrefix+"_ENCODED", pwds[i].Encoded)
-		}
+		pwds[i].ExportToEnv()
 	}
 
 	return
