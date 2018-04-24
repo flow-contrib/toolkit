@@ -4,6 +4,7 @@ Toolkit
 
 ## SSH
 
+#### Execute command
 `flow.conf`
 
 ```hocon
@@ -37,7 +38,7 @@ app {
                 output.name = "ping-example" # set output name
             }
 
-            flow = ["toolkit.ssh.run"]
+            flow = ["toolkit.ssh.command.run"]
         }
     }
 }
@@ -61,8 +62,8 @@ round-trip min/avg/max/stddev = 267.681/267.681/267.681/0.000 ms
     {
         "name": "ping-example",
         "value": {
-            "host": "rijin-services-agent",
-            "port": "20022",
+            "host": "localhost",
+            "port": "22",
             "user": "work",
             "command": {
                 "environment": [
@@ -77,6 +78,47 @@ round-trip min/avg/max/stddev = 267.681/267.681/267.681/0.000 ms
         }
     }
 ]
+```
+
+#### Upload file
+
+`flow.conf`
+
+```hocon
+packages = ["github.com/flow-contrib/toolkit/ssh"]
+
+app {
+    name = "ssh"
+    usage = "This is a demo for upload file to remote server"
+
+    commands {
+        upload {
+            usage = "Upload file"
+
+            default-config = { 
+                user = "user" 
+                host = "localhost"
+                port = "22"
+                identity-file="/Users/gogap/.ssh/id_rsa"
+                quiet = false
+
+                files = ["/Users/gogap/Downloads:/home/work"]
+
+                ignore = ["fonts", "*.svg", "*.html", "*.ttf*"]
+            }
+
+            flow = ["toolkit.ssh.file.upload"]
+        }
+    }
+}
+```
+
+```bash
+$ go-flow -v run --config flow.conf upload
+
+100.0% (/Users/gogap/Downloads/categories/index.xml -> /home/work/Downloads/categories/index.xml)
+100.0% (/Users/gogap/Downloads/categories/hybrid.css -> /home/work/Downloads/categories/hybrid.css)
+# ...
 ```
 
 ## Pwgen

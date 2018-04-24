@@ -7,11 +7,13 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/gogap/config"
 	"github.com/gogap/context"
 	"github.com/gogap/flow"
+	"github.com/pkg/sftp"
 )
 
 type OutputValue struct {
@@ -25,7 +27,8 @@ type OutputValue struct {
 }
 
 func init() {
-	flow.RegisterHandler("toolkit.ssh.run", Run)
+	flow.RegisterHandler("toolkit.ssh.command.run", Run)
+	flow.RegisterHandler("toolkit.ssh.file.upload", Upload)
 }
 
 func Run(ctx context.Context, conf config.Configuration) (err error) {
@@ -131,6 +134,195 @@ func Run(ctx context.Context, conf config.Configuration) (err error) {
 		Name:  outputName,
 		Value: outputData,
 	})
+
+	return
+}
+
+func Upload(ctx context.Context, conf config.Configuration) (err error) {
+
+	if conf.IsEmpty() {
+		return
+	}
+
+	files := conf.GetStringList("files")
+
+	if len(files) == 0 {
+		return
+	}
+
+	user := conf.GetString("user")
+	password := conf.GetString("password")
+	host := conf.GetString("host", "localhost")
+	port := conf.GetString("port", "22")
+	identityFile := conf.GetString("identity-file")
+	connectRetries := conf.GetInt32("connect-retries", 3)
+	maxPacket := conf.GetInt32("max-packet", 20480)
+	quiet := conf.GetBoolean("quiet")
+	ignore := conf.GetStringList("ignore")
+
+	cli := Client{
+		Config: Config{
+			User:           user,
+			Password:       password,
+			Host:           host,
+			Port:           port,
+			IdentityFile:   identityFile,
+			ConnectRetries: int(connectRetries),
+		},
+	}
+
+	err = cli.Connect()
+
+	if err != nil {
+		return
+	}
+
+	defer cli.Cleanup()
+
+	var sftpClient *sftp.Client
+	sftpClient, err = sftp.NewClient(cli.client, sftp.MaxPacket(int(maxPacket)))
+
+	mapFiles := map[string]string{}
+	fileOrder := []string{}
+
+	for _, file := range files {
+		items := strings.Split(file, ":")
+
+		if len(items) != 2 {
+			err = fmt.Errorf("file format error, should be 'localfile:remotefile'")
+			return
+		}
+
+		mapFiles[items[0]] = items[1]
+		fileOrder = append(fileOrder, items[0])
+	}
+
+	for _, file := range fileOrder {
+
+		var fi os.FileInfo
+		fi, err = os.Stat(file)
+		if err != nil {
+			return
+		}
+
+		if fi.IsDir() {
+
+			remoteDirRoot := mapFiles[file]
+			localDirBase := filepath.Base(file)
+
+			err = filepath.Walk(file,
+				func(path string, info os.FileInfo, walkErr error) error {
+
+					relPath, e := filepath.Rel(file, path)
+					if e != nil {
+						return e
+					}
+
+					remotePath := filepath.Join(remoteDirRoot, localDirBase, relPath)
+
+					for _, pattern := range ignore {
+						matched, matchErr := filepath.Match(pattern, info.Name())
+						if matched {
+							if info.IsDir() {
+								return filepath.SkipDir
+							}
+							return nil
+						}
+
+						if matchErr != nil {
+							return matchErr
+						}
+					}
+
+					if info.IsDir() {
+						e = cli.Exec(fmt.Sprintf("mkdir -p '%s'", remotePath))
+						if e != nil {
+							return e
+						}
+						return nil
+					}
+
+					e = uploadFile(sftpClient, quiet, maxPacket, info, path, remotePath)
+					if e != nil {
+						return e
+					}
+
+					return nil
+				},
+			)
+			if err != nil {
+				return
+			}
+
+			continue
+		}
+
+		err = uploadFile(sftpClient, quiet, maxPacket, fi, file, mapFiles[file])
+		if err != nil {
+			return
+		}
+	}
+
+	return
+}
+
+func uploadFile(sftpClient *sftp.Client, quiet bool, maxPacket int32, fi os.FileInfo, localFilename, remoateFilename string) (err error) {
+
+	totalSize := fi.Size()
+
+	var localFile *os.File
+	localFile, err = os.Open(localFilename)
+	if err != nil {
+		return
+	}
+	defer localFile.Close()
+
+	var remoteFile *sftp.File
+	remoteFile, err = sftpClient.Create(remoateFilename)
+
+	if err != nil {
+		err = fmt.Errorf("create remote file failure, file: %s, error: %s", remoateFilename, err)
+		return
+	}
+
+	defer remoteFile.Close()
+
+	buf := make([]byte, maxPacket)
+	readed := 0
+
+	for {
+		n, eRead := localFile.Read(buf)
+		readed += n
+
+		if !quiet {
+			fmt.Printf("%0.1f%% (%s -> %s)\r", (float64(readed)/float64(totalSize))*100, localFilename, remoateFilename)
+		}
+
+		if eRead != nil {
+			if eRead == io.EOF {
+				break
+			} else {
+				err = fmt.Errorf("read buf from local file failure, file: %s, error: %s", localFilename, eRead)
+				return
+			}
+		}
+
+		_, eWrite := remoteFile.Write(buf)
+		if eWrite != nil {
+			err = fmt.Errorf("write buf to remote file failure, file: %s, error: %s", remoateFilename, eWrite)
+			return
+		}
+	}
+
+	if !quiet {
+		fmt.Printf("\n\r")
+	}
+
+	err = remoteFile.Chmod(fi.Mode())
+
+	if err != nil {
+		return
+	}
 
 	return
 }

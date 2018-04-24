@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"errors"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"strings"
@@ -109,12 +108,11 @@ func (s *Client) Exec(cmd string) error {
 	}
 	session.Stdout = s.Stdout
 	session.Stderr = s.Stderr
-	// err = session.Run(cmd)
-	output, err := session.Output(cmd)
+	err = session.Run(cmd)
 	if err != nil {
 		return err
 	}
-	fmt.Println(string(output))
+
 	session.Close()
 	return err
 }
