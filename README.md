@@ -286,3 +286,84 @@ you are input 'https://gitlab.com', is it correct? (yes/no):yes
     }
 ]
 ```
+
+## SQL
+
+`flow.conf`
+
+```hocon
+packages = ["github.com/flow-contrib/toolkit/sql","github.com/go-sql-driver/mysql"]
+
+app {
+    name = "sql"
+    usage = "This is a demo for sql"
+
+    commands {
+        query {
+            usage = "query sql"
+
+            default-config = { 
+                host = "localhost"
+                port = 3306
+                user = "root"
+                password ="123456"
+                db = "test"
+                sql = "SELECT * FROM test.user;"
+
+                output.name = "test_users"
+            }
+
+            flow = ["toolkit.sql.query"]
+        }
+
+        exec {
+            usage = "exec sql"
+
+            default-config = { 
+                host = "localhost"
+                port = 3306
+                user = "root"
+                password ="123456"
+                db = "test"
+                sql = """
+                INSERT INTO `test`.`user` (`name`, `sex`, `description`) VALUES ("name","man","");
+                """
+            }
+
+            flow = ["toolkit.sql.exec"]
+        }
+    }
+}
+```
+
+### Query table to output
+
+```bash
+$ go-flow -v run --config flow.conf query
+```
+
+**output**
+
+```json
+[
+    {
+        "name": "test_users",
+        "value": [
+            {
+                "name": "name",
+                "sex": "man",
+                "description": ""
+            }
+        ],
+        "tags": [
+            "toolkit",
+            "sql"
+        ]
+    }
+]
+```
+
+#### Execute transaction
+```bash
+$ go-flow -v run --config flow.conf exec
+```
