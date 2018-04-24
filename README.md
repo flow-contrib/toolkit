@@ -176,3 +176,71 @@ $ go-flow -v run --config flow.conf generate -o pwd-output.json
     }
 ]
 ```
+
+## Readline
+
+`flow.conf`
+
+```hocon
+packages = ["github.com/flow-contrib/toolkit/readline"]
+
+app {
+    name = "readline"
+    usage = "This is a demo for readline"
+
+    commands {
+        read-text {
+            usage = "read text"
+
+            default-config = { 
+                name = "gitlab-ci-url"
+                prompt = "please input gitlab-ci url"
+                confirm = true
+                env = true ## env key = GITLAB_CI_URL
+            }
+
+            flow = ["toolkit.readline.text.read"]
+        }
+
+        read-password {
+            usage = "read password"
+
+            default-config = { 
+                name = "gitlab-ci-token"
+                prompt = "please input gitlab-ci token"
+                confirm = false
+                env = true ## env key = GITLAB_CI_TOKEN
+            }
+
+            flow = ["toolkit.readline.password.read"]
+        }
+    }
+}
+```
+
+```
+$ go-flow -v run --config flow.conf read-text
+
+go-flow -v run --config flow.conf read-text
+please input gitlab-ci url:https://gitlab.com
+you are input 'https://gitlab.com', is it correct? (yes/no):yes
+```
+
+**output**
+
+```
+[
+    {
+        "name": "gitlab-ci-url",
+        "value": {
+            "name": "gitlab-ci-url",
+            "input": "https://gitlab.com",
+            "type": "text"
+        },
+        "tags": [
+            "toolkit",
+            "readline"
+        ]
+    }
+]
+```
