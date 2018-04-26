@@ -16,6 +16,10 @@ import (
 	"github.com/pkg/sftp"
 )
 
+var (
+	Tags = []string{"toolkit", "ssh"}
+)
+
 type OutputValue struct {
 	Host string `json:"host"`
 	Port string `json:"port"`

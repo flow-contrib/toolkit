@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/flow-contrib/toolkit/utils/shell"
+
 	"golang.org/x/crypto/ssh"
 )
 
@@ -121,7 +123,7 @@ func (s *Command) fullCommand() string {
 	var arguments []string
 	// TODO: This method is compatible only with Bjourne compatible shells
 	for _, part := range s.Command {
-		arguments = append(arguments, ShellEscape(part))
+		arguments = append(arguments, shell.Escape(part))
 	}
 	return strings.Join(arguments, " ")
 }
@@ -139,7 +141,7 @@ func (s *Client) Run(ctx context.Context, cmd Command) error {
 
 	var envVariables bytes.Buffer
 	for _, keyValue := range cmd.Environment {
-		envVariables.WriteString("export " + ShellEscape(keyValue) + "\n")
+		envVariables.WriteString("export " + shell.Escape(keyValue) + "\n")
 	}
 
 	session.Stdin = io.MultiReader(
