@@ -367,3 +367,80 @@ $ go-flow -v run --config flow.conf query
 ```bash
 $ go-flow -v run --config flow.conf exec
 ```
+
+
+## Docker
+
+#### Execute Command
+
+`flow.conf`
+
+
+```hocon
+packages = ["github.com/flow-contrib/toolkit/docker"]
+
+app {
+    name = "docker"
+    usage = "This is a demo for run script on docker container"
+
+    commands {
+        run {
+            usage = "This command will ping somehost"
+
+            default-config = { 
+
+                tls-verify = ${DOCKER_TLS_VERIFY}
+                cert-path  = ${DOCKER_CERT_PATH}
+                host       = ${DOCKER_HOST}
+
+                environment = ["GOPATH=/gopath"]
+                command     = ["/bin/sh"]
+                container = "03dd8412990f" # container name or id
+
+                timeout     = 0s
+
+                stdin ="""
+                set -e;
+                env;
+                """
+
+                quiet = false
+                output.name = "ping-example"
+            }
+
+            flow = ["toolkit.docker.container.exec"]
+        }
+    }
+}
+```
+
+```bash
+$ go-flow -v run --config flow.conf run
+```
+
+**output**
+
+```json
+[
+    {
+        "name": "ping-example",
+        "value": {
+            "host": "tcp://192.168.99.100:2376",
+            "command": {
+                "environment": [
+                    "GOPATH=/gopath"
+                ],
+                "command": [
+                    "/bin/bash"
+                ],
+                "stdin": "set -e;\n                env;"
+            },
+            "output": "GOLANG_VERSION=1.10.1\nHOSTNAME=03dd8412990f\nGOPATH=/gopath\nPWD=/go\nHOME=/root\nSHLVL=1\nPATH=/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\n_=/usr/bin/env"
+        },
+        "tags": [
+            "toolkit",
+            "docker"
+        ]
+    }
+]
+```
