@@ -5,13 +5,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
+	"time"
+
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	"github.com/docker/docker/pkg/stdcopy"
 	"github.com/flow-contrib/toolkit/utils/shell"
 	"github.com/sirupsen/logrus"
-	"io"
-	"time"
 )
 
 type Docker struct {
@@ -120,13 +121,7 @@ func (p *ContainerExecutor) Exec() (err error) {
 		logrus.Debugln("Exec", exec.ID, "finished with", err)
 	}
 
-	// if err != nil {
-	// 	err = fmt.Errorf("%s\n%s", p.Stderr.String(), err)
-	// 	return
-	// }
-
 	return
-
 }
 
 func (p *ContainerExecutor) waitForExec(ctx context.Context, id string) error {
