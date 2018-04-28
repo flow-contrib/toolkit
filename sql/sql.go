@@ -1,9 +1,11 @@
 package pwgen
 
 import (
+	"bytes"
 	"database/sql"
 	"fmt"
 	"strings"
+	"text/template"
 
 	"github.com/elgs/gosqljson"
 	"github.com/gogap/config"
@@ -64,6 +66,11 @@ func Query(ctx context.Context, conf config.Configuration) (err error) {
 
 	sqlQuery := conf.GetString("sql")
 
+	sqlQuery, err = renderSQL(sqlQuery, conf.GetConfig("variables"))
+	if err != nil {
+		return
+	}
+
 	db, err := sql.Open(sqlConf.Driver, sqlConf.DSN())
 
 	if err != nil {
@@ -103,6 +110,11 @@ func Exec(ctx context.Context, conf config.Configuration) (err error) {
 	}
 
 	sqlExec := conf.GetString("sql")
+
+	sqlExec, err = renderSQL(sqlExec, conf.GetConfig("variables"))
+	if err != nil {
+		return
+	}
 
 	db, err := sql.Open(sqlConf.Driver, sqlConf.DSN())
 
@@ -154,6 +166,31 @@ func Exec(ctx context.Context, conf config.Configuration) (err error) {
 	}
 
 	return
+}
+
+func renderSQL(sqlExec string, varsConf config.Configuration) (string, error) {
+
+	vars := make(map[string]string)
+
+	if !varsConf.IsEmpty() {
+		for _, k := range varsConf.Keys() {
+			vars[k] = varsConf.GetString(k)
+		}
+	}
+
+	tmp, err := template.New("sql").Parse(sqlExec)
+	if err != nil {
+		return "", err
+	}
+
+	buf := bytes.NewBuffer(nil)
+	err = tmp.Execute(buf, vars)
+
+	if err != nil {
+		return "", err
+	}
+
+	return buf.String(), nil
 }
 
 func trimSQL(sql string) string {
