@@ -110,6 +110,8 @@ func Exec(ctx context.Context, conf config.Configuration) (err error) {
 		return
 	}
 
+	defer db.Close()
+
 	isTrans := conf.GetBoolean("tx", true)
 
 	sqls := strings.Split(sqlExec, ";")
