@@ -5,16 +5,15 @@ import (
 	goctx "context"
 	"encoding/json"
 	"fmt"
-	"github.com/gogap/config"
-	"github.com/gogap/context"
-	"github.com/gogap/flow"
 	"io"
 	"os"
 	"strings"
-)
 
-var (
-	Tags = []string{"toolkit", "docker"}
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
+	"github.com/gogap/config"
+	"github.com/gogap/context"
+	"github.com/gogap/flow"
 )
 
 type Command struct {
@@ -31,7 +30,7 @@ type OutputValue struct {
 
 func init() {
 	flow.RegisterHandler("toolkit.docker.container.exec", Exec)
-
+	flow.RegisterHandler("toolkit.docker.container.log", Log)
 }
 
 func Exec(ctx context.Context, conf config.Configuration) (err error) {
@@ -142,7 +141,100 @@ func Exec(ctx context.Context, conf config.Configuration) (err error) {
 	flow.AppendOutput(ctx, flow.NameValue{
 		Name:  outputName,
 		Value: outputData,
-		Tags:  Tags,
+		Tags:  []string{"toolkit", "docker", "exec"},
+	})
+
+	return
+}
+
+func Log(ctx context.Context, conf config.Configuration) (err error) {
+
+	if conf.IsEmpty() {
+		return
+	}
+
+	host := conf.GetString("host", "tcp://192.168.99.100:2376")
+	tlsVerify := conf.GetString("tls-verify", "1")
+	certPath := conf.GetString("cert-path")
+
+	container := conf.GetString("container")
+
+	if len(container) == 0 {
+		err = fmt.Errorf("please input container name or id")
+		return
+	}
+
+	quiet := conf.GetBoolean("quiet")
+	timeout := conf.GetTimeDuration("timeout")
+
+	outWriter := bytes.NewBuffer(nil)
+
+	var stdOut io.Writer
+
+	if quiet {
+		stdOut = outWriter
+	} else {
+		stdOut = io.MultiWriter(outWriter, os.Stdout)
+	}
+
+	err = os.Setenv("DOCKER_TLS_VERIFY", tlsVerify)
+	if err != nil {
+		return
+	}
+
+	err = os.Setenv("DOCKER_HOST", host)
+	if err != nil {
+		return
+	}
+
+	err = os.Setenv("DOCKER_CERT_PATH", certPath)
+	if err != nil {
+		return
+	}
+
+	cli, err := client.NewEnvClient()
+	if err != nil {
+		return
+	}
+
+	c := goctx.Background()
+
+	if timeout > 0 {
+		var cancel goctx.CancelFunc
+		c, cancel = goctx.WithTimeout(goctx.Background(), timeout)
+		defer cancel()
+	}
+
+	options := types.ContainerLogsOptions{ShowStdout: true, ShowStderr: true}
+
+	out, err := cli.ContainerLogs(c, container, options)
+
+	if err != nil {
+		return
+	}
+
+	_, err = io.Copy(stdOut, out)
+
+	if err != nil {
+		return
+	}
+
+	outputName := conf.GetString("output.name")
+
+	if err != nil {
+		return
+	}
+
+	outputData, err := json.Marshal(map[string]string{"log": outWriter.String()})
+
+	if err != nil {
+		return
+	}
+
+	flow.AppendOutput(ctx, flow.NameValue{
+		Name:  outputName,
+		Value: outputData,
+		Tags:  []string{"toolkit", "docker", "log"},
 	})
 
 	return
