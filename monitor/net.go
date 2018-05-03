@@ -1,4 +1,4 @@
-package net
+package monitor
 
 import (
 	"fmt"
@@ -12,7 +12,7 @@ import (
 )
 
 func init() {
-	flow.RegisterHandler("toolkit.net.tcp.address.check", TCPAddressCheck)
+	flow.RegisterHandler("toolkit.monitor.tcp.address.check", TCPAddressCheck)
 }
 
 func TCPAddressCheck(ctx context.Context, conf config.Configuration) (err error) {
